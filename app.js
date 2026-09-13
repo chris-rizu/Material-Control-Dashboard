@@ -192,6 +192,18 @@ async function fetchLedger() {
   return rows;
 }
 
+async function fetchMaterialDegrees() {
+  const map = new Map(); // material_id → degrees (0 = not an angled item)
+  for (let from = 0; from < 10000; from += 2000) {
+    const { data, error } = await sb.from("materials")
+      .select("id,degrees").order("id").range(from, from + 1999);
+    if (error) throw new Error("materials: " + error.message);
+    for (const m of data ?? []) map.set(m.id, Number(m.degrees || 0));
+    if ((data?.length ?? 0) < 2000) break;
+  }
+  return map;
+}
+
 function analyzeLedger(rows) {
   const now = new Date(), yk = now.getFullYear(), mk = now.getMonth();
   let grand = 0, monthSum = 0, monthCount = 0, latestDate = null, lastCreated = null;
@@ -218,6 +230,29 @@ function analyzeLedger(rows) {
            zeroPrice, noMaterial, noSupplier, flagged, filled,
            dupPairs: dupPairs.length,
            dupExtra: dupPairs.reduce((a, n) => a + n - 1, 0) };
+}
+
+// Angled lines (ELBOW/BEND with "3X90"-style sizes in the receipt text) must
+// link to a catalog material carrying the SAME degrees — search_name omits
+// degrees, so text matching alone can confuse 45° and 90° twins.
+function analyzeAngles(rows, degById) {
+  const ANGLE = /X\s*(22\.5|45|90)/;
+  let total = 0, bad = 0;
+  const examples = [];
+  for (const r of rows) {
+    const raw = String(r.particulars_raw || "").toUpperCase().match(ANGLE);
+    const rawDeg = raw ? Number(raw[1]) : 0;
+    const matDeg = r.material_id == null ? null : degById.get(r.material_id);
+    if (rawDeg === 0 && (matDeg ?? 0) === 0) continue;
+    total++;
+    if (rawDeg > 0 && matDeg !== rawDeg) {
+      bad++;
+      if (examples.length < 3)
+        examples.push(`#${r.id} "${String(r.particulars_raw || "").trim()}" → ` +
+          (matDeg == null ? "unlinked" : `${matDeg}°`));
+    }
+  }
+  return { total, bad, examples };
 }
 
 /* ---------- checks -------------------------------------------------------- */
@@ -256,7 +291,7 @@ async function runAll() {
   try {
     await checkConnectivity();
 
-    const [pCount, mCount, sCount, aCount, cCount, ledger, profRes, migRes, impRes, recentRes] =
+    const [pCount, mCount, sCount, aCount, cCount, ledger, profRes, migRes, impRes, recentRes, degById] =
       await Promise.all([
         countRows("purchases").catch((e) => { add("fail", "Ledger readable", e.message); return null; }),
         countRows("materials").catch(() => null),
@@ -274,6 +309,7 @@ async function runAll() {
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
           .limit(8),
+        fetchMaterialDegrees().catch(() => null),
       ]);
 
     /* ledger + totals */
@@ -337,6 +373,21 @@ async function runAll() {
         add("info", "Amounts auto-filled at import", `${stats.filled} line(s) had blank amounts in Excel; the import filled price × qty.`);
       if (stats.dupPairs > 0)
         add("info", "Repeated lines", `${stats.dupPairs} repeated line pair(s) (${stats.dupExtra} extra row(s)) — known from the import, kept as-is.`);
+    }
+
+    /* angled links — elbows/bends must carry the same degrees as their material */
+    if (ledger && degById) {
+      const ang = analyzeAngles(ledger, degById);
+      if (ang.total === 0) {
+        add("info", "Angled links", "No angled (elbow/bend) lines in the ledger yet.");
+      } else if (ang.bad === 0) {
+        add("ok", "Angled links consistent",
+            `${ang.total} angled line${ang.total === 1 ? "" : "s"} — every elbow/bend links to a material with matching degrees.`);
+      } else {
+        add("warn", "Angled links disagree",
+            `${ang.bad} of ${ang.total} angled line(s) link to a material with different degrees (or nothing). ` +
+            `Example: ${ang.examples.join(" · ")}`);
+      }
     }
 
     /* last import */
@@ -472,6 +523,7 @@ window.__mcd_preview = function () {
   add("ok", "Database (REST)", "reachable · 96 ms");
   add("ok", "Ledger readable (RLS working)", "131 lines visible for your account");
   add("info", "Ledger totals", "131 lines · ₱500,206.89 grand total · newest purchase Sep 11, 2026");
+  add("ok", "Angled links consistent", "25 angled lines — every elbow/bend links to a material with matching degrees.");
   add("warn", "migration_002_display.sql not applied yet",
       "The client still sees raw particulars text. Paste supabase/migration_002_display.sql in the Supabase SQL editor.");
   add("ok", "Owner account present", "dev@rorotransport.ph · owner");

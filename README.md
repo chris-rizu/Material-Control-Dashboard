@@ -35,6 +35,7 @@ disk also works, but a real URL is tidier.)
 | Ledger totals | line count, grand total, newest purchase date |
 | Client activity | when the client last encoded something (warns after 21 quiet days) |
 | Display migration | whether `migration_002_display.sql` has been applied yet |
+| Angled links | every ELBOW/BEND line carries the same degrees as its linked material (catches the 45°/90° mix-up class) |
 | Owner account | someone can still manage users/roles |
 | Accounts | role breakdown, deactivated accounts |
 | Data scans | zero-price lines, unlinked lines, flagged receipts, duplicate lines, auto-filled amounts |
