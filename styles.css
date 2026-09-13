@@ -45,6 +45,9 @@
 
 * { box-sizing: border-box; }
 
+/* author display rules (e.g. .login-wrap's grid) must never defeat hidden */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--bg);

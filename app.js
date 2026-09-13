@@ -79,6 +79,29 @@ let currentEmail = "";
 let autoTimer = null;
 let running = false;
 
+// Single source of truth for entering/leaving the dashboard. Called both
+// directly from the sign-in handler (no event-system dependency — a lost
+// auth event must never leave the user stuck on the login card) and from
+// onAuthStateChange for restored sessions / token refresh / sign-out.
+function enterDashboard(email) {
+  if (signedIn) return;
+  signedIn = true;
+  currentEmail = email || "";
+  $("loginView").hidden = true;
+  $("appView").hidden = false;
+  $("userChip").textContent = currentEmail;
+  $("userChip").title = currentEmail;
+  if (!autoTimer) autoTimer = setInterval(() => runAll(), CONFIG.AUTO_REFRESH_MS);
+  runAll();
+}
+function leaveDashboard() {
+  signedIn = false;
+  currentEmail = "";
+  $("loginView").hidden = false;
+  $("appView").hidden = true;
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+}
+
 const CHECKS = []; // {status: ok|info|warn|fail, label, detail}
 const add = (status, label, detail) => CHECKS.push({ status, label, detail });
 
@@ -98,13 +121,24 @@ $("loginForm").addEventListener("submit", async (e) => {
       "the request — try another browser or turn off blockers for this page.";
     err.hidden = false;
   }, 15000);
-  const { error } = await sb.auth.signInWithPassword({
+  const { data, error } = await sb.auth.signInWithPassword({
     email: $("email").value.trim(),
     password: $("password").value,
   });
   clearTimeout(slowTimer);
   btn.disabled = false; btn.textContent = "Sign in";
-  if (error) { err.textContent = error.message; err.hidden = false; }
+  if (error) { err.textContent = error.message; err.hidden = false; return; }
+  if (!data?.session) {
+    err.textContent =
+      "Supabase accepted the sign-in but returned no session — this usually " +
+      "means the email hasn't been confirmed yet. Check your inbox for the " +
+      "confirmation email, or resend it from the Supabase dashboard " +
+      "(Authentication → Users).";
+    err.hidden = false;
+    return;
+  }
+  // success — switch immediately, don't wait for the auth event
+  enterDashboard(data.session.user?.email ?? "");
 });
 
 $("forgotBtn").addEventListener("click", async () => {
@@ -132,18 +166,7 @@ $("logoutBtn").addEventListener("click", () => sb.auth.signOut());
 $("refreshBtn").addEventListener("click", () => runAll());
 
 sb.auth.onAuthStateChange((_event, session) => {
-  signedIn = !!session;
-  currentEmail = session?.user?.email ?? "";
-  $("loginView").hidden = signedIn;
-  $("appView").hidden = !signedIn;
-  $("userChip").textContent = currentEmail;
-  $("userChip").title = currentEmail;
-  if (signedIn) {
-    if (!autoTimer) autoTimer = setInterval(runAll, CONFIG.AUTO_REFRESH_MS);
-    runAll();
-  } else if (autoTimer) {
-    clearInterval(autoTimer); autoTimer = null;
-  }
+  session ? enterDashboard(session.user?.email ?? "") : leaveDashboard();
 });
 
 /* ---------- data helpers ------------------------------------------------- */
@@ -341,6 +364,7 @@ async function runAll() {
   const t = new Date();
   $("lastChecked").textContent = `Checked ${t.toLocaleTimeString([], { hour12: false })}`;
   renderVerdict("done");
+  running = false;
 }
 
 /* ---------- rendering ----------------------------------------------------- */
