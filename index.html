@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Material Control — Dev Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b1524'/%3E%3Crect x='6' y='15' width='4' height='11' fill='%233b82f6'/%3E%3Crect x='14' y='8' width='4' height='18' fill='%233b82f6'/%3E%3Crect x='22' y='18' width='4' height='8' fill='%2322c55e'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- ================= LOGIN (shown until you sign in) ================= -->
+  <div id="loginView" class="login-wrap" hidden>
+    <form id="loginForm" class="login-card" autocomplete="on">
+      <div class="login-brand">
+        <svg class="mark" width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" fill="#0b1524"/>
+          <rect x="6" y="15" width="4" height="11" fill="#3b82f6"/>
+          <rect x="14" y="8" width="4" height="18" fill="#3b82f6"/>
+          <rect x="22" y="18" width="4" height="8" fill="#22c55e"/>
+        </svg>
+        <h1>Material Control <span class="devtag">DEV</span></h1>
+      </div>
+      <p class="sub">Developer health dashboard — live status of your client's system.</p>
+
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required autocomplete="username" />
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required autocomplete="current-password" />
+
+      <button id="loginBtn" class="btn primary" type="submit">Sign in</button>
+      <div id="loginErr" class="login-err" hidden></div>
+
+      <p class="login-note">
+        Same account you use in the app. Data is protected by row-level
+        security — nobody sees anything here without signing in.
+      </p>
+    </form>
+  </div>
+
+  <!-- ================= DASHBOARD ================= -->
+  <div id="appView" hidden>
+    <header class="topbar">
+      <span class="brand">
+        <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" fill="#0b1524"/>
+          <rect x="6" y="15" width="4" height="11" fill="#3b82f6"/>
+          <rect x="14" y="8" width="4" height="18" fill="#3b82f6"/>
+          <rect x="22" y="18" width="4" height="8" fill="#22c55e"/>
+        </svg>
+        Material Control <span class="devtag">DEV DASHBOARD</span>
+      </span>
+      <span class="proj-chip" id="projChip"></span>
+      <span class="spacer"></span>
+      <span class="last-checked" id="lastChecked"></span>
+      <button id="refreshBtn" class="btn" type="button" title="Re-run all checks">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+        Refresh
+      </button>
+      <button id="themeBtn" class="btn icon" type="button" title="Toggle light / dark">
+        <svg id="themeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></svg>
+      </button>
+      <span class="user-chip" id="userChip"></span>
+      <button id="logoutBtn" class="btn" type="button">Sign out</button>
+    </header>
+
+    <main class="wrap">
+      <section id="verdict" class="verdict ok" aria-live="polite"></section>
+
+      <section id="tiles" class="tiles"></section>
+
+      <div class="cols">
+        <section class="card">
+          <div class="card-head"><h2>Health checks</h2></div>
+          <div id="checks"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Recent client activity</h2></div>
+          <div id="recent" class="tbl-wrap"></div>
+          <div id="imports" class="import-line"></div>
+        </section>
+      </div>
+
+      <footer class="foot">
+        <span>Auto-refreshes every 5 min while open.</span>
+        <a id="linkSupabase" href="#" target="_blank" rel="noopener noreferrer">Supabase project →</a>
+        <a id="linkRepo" href="https://github.com/chris-rizu/Material-Control" target="_blank" rel="noopener noreferrer">App repo →</a>
+        <span>Client's app: <b>Material Control</b> (desktop / npm run dev)</span>
+      </footer>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

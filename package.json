@@ -1,0 +1,16 @@
+{
+  "name": "material-control-dashboard",
+  "version": "1.0.0",
+  "description": "A private status page for **you** (the developer), separate from the client's app. Open it any time to confirm the client's Material Control system is healthy before they use it: database up, ledger intact, client active, nothing broken.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "playwright-core": "^1.63.0"
+  }
+}
