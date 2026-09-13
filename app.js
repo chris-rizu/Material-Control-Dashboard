@@ -89,12 +89,43 @@ $("loginForm").addEventListener("submit", async (e) => {
   const btn = $("loginBtn"), err = $("loginErr");
   err.hidden = true;
   btn.disabled = true; btn.textContent = "Signing in…";
+  // if Supabase never answers (ad-blocker / extension / network dropping
+  // the request) the button would spin forever — surface that instead
+  const slowTimer = setTimeout(() => {
+    err.textContent =
+      "Supabase is not answering. If the button stays like this for another " +
+      "few seconds, an ad-blocker, extension, or your network is blocking " +
+      "the request — try another browser or turn off blockers for this page.";
+    err.hidden = false;
+  }, 15000);
   const { error } = await sb.auth.signInWithPassword({
     email: $("email").value.trim(),
     password: $("password").value,
   });
+  clearTimeout(slowTimer);
   btn.disabled = false; btn.textContent = "Sign in";
   if (error) { err.textContent = error.message; err.hidden = false; }
+});
+
+$("forgotBtn").addEventListener("click", async () => {
+  const note = $("resetNote");
+  const email = $("email").value.trim();
+  note.hidden = true;
+  if (!email) {
+    note.textContent = "Type your email above first, then click Forgot password.";
+    note.hidden = false;
+    return;
+  }
+  const btn = $("forgotBtn");
+  btn.disabled = true;
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: location.origin + location.pathname,
+  });
+  btn.disabled = false;
+  note.textContent = error
+    ? error.message
+    : "Reset email sent — check your inbox (and spam). Opening the link from this browser lands you back here to set a new password.";
+  note.hidden = false;
 });
 
 $("logoutBtn").addEventListener("click", () => sb.auth.signOut());
